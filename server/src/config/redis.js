@@ -6,21 +6,51 @@ let redisClient = null;
  * Initialize Redis client
  */
 const initRedis = async () => {
+  // Skip Redis if no URL is provided (allows app to run without Redis)
+  if (!process.env.REDIS_URL) {
+    console.warn('⚠️  REDIS_URL not set - running without Redis cache (app will still work but without caching)');
+    return null;
+  }
+
   try {
     redisClient = redis.createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      url: process.env.REDIS_URL,
+      socket: {
+        reconnectStrategy: (retries) => {
+          if (retries > 10) {
+            console.error('Redis: Max reconnection attempts reached');
+            return new Error('Max reconnection attempts reached');
+          }
+          // Exponential backoff: 100ms, 200ms, 400ms, etc.
+          return Math.min(retries * 100, 3000);
+        },
+        connectTimeout: 10000,
+      },
     });
 
     redisClient.on('error', (err) => {
-      console.error('Redis Client Error:', err);
+      console.error('Redis Client Error:', err.message);
+      // Don't crash the app - just log the error
+    });
+
+    redisClient.on('connect', () => {
+      console.log('Redis: Connecting...');
+    });
+
+    redisClient.on('ready', () => {
+      console.log('✓ Redis Connected successfully');
+    });
+
+    redisClient.on('reconnecting', () => {
+      console.log('Redis: Reconnecting...');
     });
 
     await redisClient.connect();
-    console.log('Redis Connected');
     return redisClient;
   } catch (error) {
-    console.error('Redis connection error:', error.message);
-    // Continue without Redis in development
+    console.error('Redis connection failed:', error.message);
+    console.warn('⚠️  Continuing without Redis - app will work but without caching');
+    redisClient = null;
     return null;
   }
 };

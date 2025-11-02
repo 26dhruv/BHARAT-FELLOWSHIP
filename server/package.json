@@ -11,7 +11,8 @@
     "worker": "node worker/queue-worker.js",
     "csv-import": "node worker/csv-loader.js",
     "scheduler": "node worker/scheduler.js",
-    "scheduler:test": "node worker/scheduler.js --trigger"
+    "scheduler:test": "node worker/scheduler.js --trigger",
+    "postinstall": "echo 'Installation complete'"
   },
   "keywords": [
     "civic-tech",
